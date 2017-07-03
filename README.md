@@ -17,7 +17,7 @@ const server = http.createServer();
 const router = require('nat-router');
 router.on(
   'GET', 
-  '/test/:arg1/:arg2', 
+  '/static/:arg1/:arg2', 
   function(arg1, arg2){
     router.render( 
       `${__dirname}/view/template-1.pug`, 
@@ -27,7 +27,7 @@ router.on(
 );
 router.on(
   'POST', 
-  '/a/:arg1/:arg2',
+  '/static/:arg1/:arg2',
   (arg1, arg2, data) => {
     router.render( 
       `${__dirname}/view/template-2.pug`, 
