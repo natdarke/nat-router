@@ -10,7 +10,7 @@ Useful if you want a basic router without installing a full framework. Works wit
     
 
 ## Code Example
-~~~~
+```
 "use strict";
 const http = require('http');
 const server = http.createServer();
@@ -47,7 +47,7 @@ server.on(
   }
 );
 server.listen(3000);
-~~~~
+```
 
 ## Motivation
 
@@ -68,7 +68,7 @@ const router = require('nat-router');
    - The JSON data (parsed) sent in the body of the request (if MIME type is 'application/json')
 
 ### router.render(TEMPLATE-PATH, TEMPLATE-DATA)
-* Used inside router.on. Specifies which Pug template is used and the data to pass to the template
+* Used inside router.on. TEMPLATE-PATH is the file path of Pug template to be used and TEMPLATE-DATA is the data that is passed the aforementioned template
 
 ### router.resolve(REQUEST, RESPONSE)
 * Called when any request is made, passing the standard node http REQUEST and RESPONSE objects (aka http.incomingMessage and http.serverResponse)
