@@ -10,8 +10,8 @@ Useful if you want a basic router without installing a full framework. Works wit
     
 
 ## Code Example
-```
-"use strict";
+
+```JavaScript
 const http = require('http');
 const server = http.createServer();
 const router = require('nat-router');
