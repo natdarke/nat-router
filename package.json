@@ -2,6 +2,11 @@
   "name": "nat-router",
   "version": "0.0.2",
   "description": "Basic Router",
+  "homepage": "https://github.com/natdarke/nat-router",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/natdarke/nat-router.git"
+  },
   "main": "router.js",
   "author": "Nat Darke",
   "email": "nat@natdarke.com",
@@ -9,5 +14,6 @@
   "dependencies": {
     "concat-stream": "^1.6.0",
     "pug": "^2.0.0-rc.2"
-  }
+  },
+  "engines" : { "node" : ">=7.10.0" }
 }
