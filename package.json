@@ -1,0 +1,13 @@
+{
+  "name": "nat-router",
+  "version": "0.0.2",
+  "description": "Basic Router",
+  "main": "router.js",
+  "author": "Nat Darke",
+  "email": "nat@natdarke.com",
+  "license": "ISC",
+  "dependencies": {
+    "concat-stream": "^1.6.0",
+    "pug": "^2.0.0-rc.2"
+  }
+}
