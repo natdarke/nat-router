@@ -4,13 +4,13 @@ A simple, lightweight node server and router that can deal with requests for:
 
 * Files
 * GET
-* POST. Supports media types (aka MIME or content type) 'application/x-www-form-urlencoded' and 'application/json'
+* POST. Currently supports MIME types (aka media or content type) 'application/x-www-form-urlencoded' and 'application/json'
 
 Useful if you want a basic router without installing a full framework. Works with Pug as the rendering engine.
     
 
 ## Code Example
-`
+~~~~
 "use strict";
 const http = require('http');
 const server = http.createServer();
@@ -28,7 +28,7 @@ router.on(
 router.on(
   'POST', 
   '/a/:arg1/:arg2',
-  function(arg1, arg2, data){
+  (arg1, arg2, data) => {
     router.render( 
       `${__dirname}/view/template-2.pug`, 
       { arg1, arg2, data}
@@ -47,7 +47,7 @@ server.on(
   }
 );
 server.listen(3000);
-`
+~~~~
 
 ## Motivation
 
@@ -65,14 +65,14 @@ const router = require('nat-router');
 * Adds a rule. All rules are checked when router.resolve is called. If the METHOD and PATTERN are matched then the CALLBACK function is called, with the with the patterns arguments (:arg1) passed to the CALLBACK 
 * For POST requests, the data argument represents either 
    - The form data submitted in the body of the request (if content-type is 'application/x-www-form-urlencoded')  
-   - The JSON data (parsed) sent in the body of the request (if content-type is 'application/json')
+   - The JSON data (parsed) sent in the body of the request (if MIME type is 'application/json')
 
 ### router.render(TEMPLATE-PATH, TEMPLATE-DATA)
 * Used inside router.on. Specifies which Pug template is used and the data to pass to the template
 
-### router.resolve(REQUEST, RESP)NSE)
-* Called when any request is made, passing the standard node http request and response objects (aka http.incomingMessage and http.serverResponse)
-* If the request has a file extension of a known mime type, it will look for a file of that name, else it will attempt to resolve the request using rules added using router.on
+### router.resolve(REQUEST, RESPONSE)
+* Called when any request is made, passing the standard node http REQUEST and RESPONSE objects (aka http.incomingMessage and http.serverResponse)
+* If the request has a file extension of a known MIME type, it will look for a file of that name, else it will attempt to resolve the request using rules added using router.on
 
 ## Tests
 
