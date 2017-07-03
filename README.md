@@ -1,31 +1,87 @@
 ## Synopsis
 
-At the top of the file there should be a short introduction and/ or overview that explains **what** the project is. This description should match descriptions added for package managers (Gemspec, package.json, etc.)
+A simple, lightweight node server and router that can deal with requests for:
+
+* Files
+* GET
+* POST. Supports media types (aka MIME or content type) 'application/x-www-form-urlencoded' and 'application/json'
+
+Useful if you want a basic router without installing a full framework. Works with Pug as the rendering engine.
+    
 
 ## Code Example
-
-Show what the library does as concisely as possible, developers should be able to figure out **how** your project solves their problem by looking at the code example. Make sure the API you are showing off is obvious, and that your code is short and concise.
+`
+"use strict";
+const http = require('http');
+const server = http.createServer();
+const router = require('nat-router');
+router.on(
+  'GET', 
+  '/test/:arg1/:arg2', 
+  function(arg1, arg2){
+    router.render( 
+      `${__dirname}/view/template-1.pug`, 
+      { arg1, arg2 }
+    );
+  }
+);
+router.on(
+  'POST', 
+  '/a/:arg1/:arg2',
+  function(arg1, arg2, data){
+    router.render( 
+      `${__dirname}/view/template-2.pug`, 
+      { arg1, arg2, data}
+    );
+  }
+);
+server.on(
+  'request',
+  function(request, response){
+    try{
+        router.resolve(request, response);
+    }
+    catch(error){
+      console.log(error.stack);
+    }
+  }
+);
+server.listen(3000);
+`
 
 ## Motivation
 
-A short description of the motivation behind the creation and maintenance of the project. This should explain **why** the project exists.
+This project has mostly been about my own development i.e understanding Node http fundamentals wthout using the Express framework
 
 ## Installation
 
-Provide code examples and explanations of how to get the project.
+npm install nat-router
 
 ## API Reference
 
-Depending on the size of the project, if it is small and simple enough the reference docs can be added to the README. For medium size to larger projects it is important to at least provide a link to where the API reference docs live.
+const router = require('nat-router');
+
+### router.on(METHOD, PATTERN, CALLBACK)
+* Adds a rule. All rules are checked when router.resolve is called. If the METHOD and PATTERN are matched then the CALLBACK function is called, with the with the patterns arguments (:arg1) passed to the CALLBACK 
+* For POST requests, the data argument represents either 
+   - The form data submitted in the body of the request (if content-type is 'application/x-www-form-urlencoded')  
+   - The JSON data (parsed) sent in the body of the request (if content-type is 'application/json')
+
+### router.render(TEMPLATE-PATH, TEMPLATE-DATA)
+* Used inside router.on. Specifies which Pug template is used and the data to pass to the template
+
+### router.resolve(REQUEST, RESP)NSE)
+* Called when any request is made, passing the standard node http request and response objects (aka http.incomingMessage and http.serverResponse)
+* If the request has a file extension of a known mime type, it will look for a file of that name, else it will attempt to resolve the request using rules added using router.on
 
 ## Tests
 
-Describe and show how to run the tests with code examples.
+There are no tests for this package yet
 
 ## Contributors
 
-Let people know how they can dive into the project, include important links to things like issue trackers, irc, twitter accounts if applicable.
+@natdarke
 
 ## License
 
-A short snippet describing the license (MIT, Apache, etc.)
+GPLv3
