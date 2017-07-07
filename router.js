@@ -50,15 +50,31 @@ Router.prototype = {
 		}
 	},
 	render : function(templatePath, data){
-		const page = pug.compileFile(templatePath);
 		let response = this.getResponse();
-		response.writeHead(
-			200,
-			{
-				'Content-Type': 'text/html'
-			}
-		);
-		response.end(page(data), 'utf-8');
+		const ext = path.extname(templatePath);
+		if(ext==='.pug'){
+			const page = pug.compileFile(templatePath);
+			response.writeHead(200,{'Content-Type': 'text/html'});
+			response.end(page(data), 'utf-8');
+		}
+		else if(ext==='.html'){
+			//single page js app
+			fs.readFile(
+				templatePath, 
+				function(error, data){
+					if(error){
+						throw `File ${templatePath} doesn't exist`;
+					}
+					else{
+						response.writeHead(200,{'Content-Type': 'text/html'});
+						response.end(data, 'utf-8');
+					}
+				}
+			);
+		}
+		else {
+			throw "Only pug and html files currently supported";
+		}
 	}
 };
 function cleanPath(path){
@@ -113,10 +129,9 @@ function appRequest(request, response, router){
 				);
 			}
 			else{
-				response.writeHead(415,'Unsupported Media Type');
+				response.statusCode = 415;
 				response.end('Unsupported Media Type');
 			}
-
 		}
 		else if(route.method==='GET') {
 			route.handler.apply(this, args);
@@ -181,6 +196,7 @@ function fileRequest(request, response, ext){
 					response.end();
 				} 
 				else{
+					response.statusCode = 200;
 					response.setHeader('Content-type', mimeType[ext] || 'text/plain' );
 					response.end(data, 'binary');
 				}
@@ -188,8 +204,8 @@ function fileRequest(request, response, ext){
 		);
 	}
 	else{
-		response.statusCode = 500;
-		response.end('Invalid file format');
+		response.statusCode = 415;
+		response.end('Unsupported Media Type');
 	}
 }
 module.exports = new Router();
