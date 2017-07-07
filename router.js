@@ -49,7 +49,7 @@ Router.prototype = {
 			appRequest(request, response, this);
 		}
 	},
-	render : function(templatePath, data){
+	render : function(templatePath, data = {}){
 		let response = this.getResponse();
 		const ext = path.extname(templatePath);
 		if(ext==='.pug'){
@@ -150,20 +150,23 @@ function parsePath(path, pattern){
 		match : true,
 		args : []
 	};
-	const patternArray = pattern.split('/');
-	const pathArray = path.split('/');
-	if(patternArray.length !== pathArray.length){
-		parsed.match = false;
-		return parsed;
-	}
-	for(let i=1; i<patternArray.length; i++){
-		if(patternArray[i].charAt(0) === ':'){
-			parsed.args.push(pathArray[i]);
+	if(pattern!=='/*'){
+		//if pattern is not for single page js app i.e. routing not done on client side
+		const patternArray = pattern.split('/');
+		const pathArray = path.split('/');
+		if(patternArray.length !== pathArray.length){
+			parsed.match = false;
+			return parsed;
 		}
-		else{
-			if(patternArray[i] !== pathArray[i]){
-				parsed.match = false;
-				break;
+		for(let i=1; i<patternArray.length; i++){
+			if(patternArray[i].charAt(0) === ':'){
+				parsed.args.push(pathArray[i]);
+			}
+			else{
+				if(patternArray[i] !== pathArray[i]){
+					parsed.match = false;
+					break;
+				}
 			}
 		}
 	}
