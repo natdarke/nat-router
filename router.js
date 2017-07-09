@@ -10,6 +10,8 @@ function Router(){
 	let routes = [];
 	let request = {};
 	let response = {};
+	let status = 200;
+	let rootDir = '';
 	this.setRoute = function(method, pattern, handler){
 		routes.push({method, pattern, handler});
 	};
@@ -28,6 +30,18 @@ function Router(){
 	this.getResponse = function(){
 		return response;
 	};
+	this.setStatus = function(n){
+		status = n;
+	};
+	this.getStatus = function(){
+		return status;
+	};
+	this.setRootDir = function(path){
+		rootDir = path;
+	};
+	this.getRootDir = function(){
+		return rootDir;
+	};
 }
 Router.prototype = {
 	on : function(method, pattern, handler){
@@ -43,7 +57,7 @@ Router.prototype = {
 		this.setResponse(response);
 		const ext = path.extname(request.url);
 		if(ext!==''){
-			fileRequest(request, response, ext);
+			fileRequest(`${this.getRootDir()}${request.url}`, response, ext);
 		}
 		else {
 			appRequest(request, response, this);
@@ -53,29 +67,22 @@ Router.prototype = {
 		let response = this.getResponse();
 		const ext = path.extname(templatePath);
 		if(ext==='.pug'){
-			const page = pug.compileFile(templatePath);
+			const page = pug.compileFile(`${this.getRootDir()}${templatePath}`);
 			response.writeHead(200,{'Content-Type': 'text/html'});
-			response.end(page(data), 'utf-8');
+			response.end(page(data));
 		}
 		else if(ext==='.html'){
 			//single page js app
-			fs.readFile(
-				templatePath, 
-				function(error, data){
-					if(error){
-						throw `File ${templatePath} doesn't exist`;
-					}
-					else{
-						response.writeHead(200,{'Content-Type': 'text/html'});
-						response.end(data, 'utf-8');
-					}
-				}
-			);
+			fileRequest(`${this.getRootDir()}${templatePath}`, response, ext);
 		}
 		else {
 			throw "Only pug and html files currently supported";
 		}
+	},
+	status : function(n,f){
+		return true;
 	}
+
 };
 function cleanPath(path){
 	// remove trailing slash
@@ -85,56 +92,14 @@ function pathIsValid(path){
 	return !(/[^A-Z|a-z|0-9|-|.|_|~|:|\/|\?|#|\[|\]|@|!|$|&|'|\(|\)|\*|\+|,|;|=|`]/.test(path));
 }
 function appRequest(request, response, router){
-	const urlPath = cleanPath(request.url);
 	let routes = router.getRoutes();
-	var route;
-	let args = [];
-	for(let i=0; i<routes.length; i++){
-		if(request.method===routes[i].method){
-			const parsedPath = parsePath(urlPath, routes[i].pattern);
-			if(parsedPath.match){
-				route = routes[i];
-				args = parsedPath.args;
-				break;
-			}
+	var matchedRoute = matchRoute(routes, request);
+	if(matchedRoute){
+		if(matchedRoute.method==='POST'){
+			appPostRequest(request, response, matchedRoute);
 		}
-	}
-	if(route){
-		if(route.method==='POST'){
-			let chunks = [];
-			request.on('data', chunk => chunks.push(chunk));
-			if(request.headers['content-type'].indexOf('application/x-www-form-urlencoded')!==-1){
-				request.on(
-					'end', 
-					() => {
-						args.push(
-							qs.parse(
-								Buffer.concat(chunks).toString()
-							)
-						);
-						route.handler.apply(this, args);
-					}
-				);
-			}
-			else if(request.headers['content-type'].indexOf('application/json')!==-1){
-				request.on(
-					'end', 
-					() => {
-						const chunksArray = Buffer.concat(chunks);
-						const chunksStr = chunks.toString();
-						const jsonData = JSON.parse(chunksStr);
-						args.push(jsonData);
-						route.handler.apply(this, args);
-					}
-				);
-			}
-			else{
-				response.statusCode = 415;
-				response.end('Unsupported Media Type');
-			}
-		}
-		else if(route.method==='GET') {
-			route.handler.apply(this, args);
+		else if(matchedRoute.method==='GET'){
+			matchedRoute.handler.apply(this, matchedRoute.args);
 		}
 		else {
 			throw('Only GET and POST methods currently supported');
@@ -144,6 +109,21 @@ function appRequest(request, response, router){
 		response.writeHead(404,'Page Not found');
 		response.end('Page Not Found');
 	}
+}
+function matchRoute(routes, request){
+	let matchedRoute;
+	const urlPath = cleanPath(request.url);
+	for(let i=0; i<routes.length; i++){
+		if(request.method===routes[i].method){
+			const parsedPath = parsePath(urlPath, routes[i].pattern);
+			if(parsedPath.match){
+				matchedRoute = routes[i];
+				matchedRoute.args = parsedPath.args;
+				break;
+			}
+		}
+	}
+	return matchedRoute;
 }
 function parsePath(path, pattern){
 	let parsed = {
@@ -172,7 +152,7 @@ function parsePath(path, pattern){
 	}
 	return parsed;
 }
-function fileRequest(request, response, ext){	
+function fileRequest(filePath, response, ext){	
 	const mimeType = {
 		'.ico': 'image/x-icon',
 		'.html': 'text/html',
@@ -190,19 +170,52 @@ function fileRequest(request, response, ext){
 		'.ttf': 'aplication/font-sfnt'
 	};
 	if(mimeType[ext]){
-		const filePath = `${__dirname}${request.url}`;
 		fs.readFile(
 			filePath, 
 			function(error, data){
 				if(error){
-					response.writeHead(404,'File Not found');
+					response.writeHead(404, {});
 					response.end();
 				} 
 				else{
-					response.statusCode = 200;
-					response.setHeader('Content-type', mimeType[ext] || 'text/plain' );
-					response.end(data, 'binary');
+					response.writeHead(200,{
+						'Content-type': mimeType[ext]
+					});
+					response.end(data);
 				}
+			}
+		);
+	}
+	else{
+		response.statusCode = 415;
+		response.end('Unsupported Media Type');
+	}
+}
+function appPostRequest(request, response, matchedRoute){
+	let chunks = [];
+	request.on('data', chunk => chunks.push(chunk));
+	if(request.headers['content-type'].indexOf('application/x-www-form-urlencoded')!==-1){
+		request.on(
+			'end', 
+			() => {
+				matchedRoute.args.push(
+					qs.parse(
+						Buffer.concat(chunks).toString()
+					)
+				);
+				matchedRoute.handler.apply(this, matchedRoute.args);
+			}
+		);
+	}
+	else if(request.headers['content-type'].indexOf('application/json')!==-1){
+		request.on(
+			'end', 
+			() => {
+				const chunksArray = Buffer.concat(chunks);
+				const chunksStr = chunks.toString();
+				const jsonData = JSON.parse(chunksStr);
+				matchedRoute.args.push(jsonData);
+				matchedRoute.handler.apply(this, matchedRoute.args);
 			}
 		);
 	}
