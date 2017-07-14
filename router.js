@@ -5,13 +5,13 @@ const url = require('url');
 const path = require('path');
 const concat = require('concat-stream');
 const qs = require('querystring');
-const parsePathPattern = require('parse-path-pattern');
+const parsePathPattern = require('../parse-path-pattern/parse-path-pattern.js');
 
 function Router(){
 	let rules = [];
 	let request = {};
 	let response = {};
-	let args = [];
+	let args = {};
 	let statusRules = [];
 	let rootDir = '';
 	this.setRule = function(method, pattern, onMatch){
@@ -32,11 +32,14 @@ function Router(){
 	this.getResponse = function(){
 		return response;
 	};
-	this.setArgs = function(args){
-		args = args;
+	this.setArgs = function(a){
+		args = a;
 	};
 	this.getArgs = function(){
 		return args;
+	};
+	this.modArgs = function(key, value){
+		args[key] = value;
 	};
 	this.setStatusRule = function(statusCode, action){
 		statusRules[statusCode] = action;
@@ -78,13 +81,14 @@ Router.prototype = {
 			}
 		}
 	},
-	render : function(templatePath, data = {}){
+	render : function(templatePath, customArgs = null){
 		let response = this.getResponse();
+		let templateArgs = customArgs || this.getArgs();
 		const ext = path.extname(templatePath);
 		if(ext==='.pug'){
 			const page = pug.compileFile(`${this.getRootDir()}${templatePath}`);
 			response.setHeader('Content-Type', 'text/html');
-			response.write(page(data));
+			response.write(page(templateArgs));
 			response.end();
 		}
 		else {
@@ -113,7 +117,6 @@ function pathIsValid(path){
 function appRequest(request, response, router){
 	let rules = router.getRules();
 	let matchedRule = matchRule(rules, request);
-	router.setArgs(matchedRule.args);
 	response.statusCode = 200; //default
 	let chunks = [];
 	request.on('data', chunk => chunks.push(chunk));
@@ -121,6 +124,7 @@ function appRequest(request, response, router){
 		'end', 
 		() => {
 			if(matchedRule){
+				router.setArgs(matchedRule.args);
 				if(matchedRule.method === 'POST'){
 					// if POST then add body data to the arguments passed to the 'onMatch' function 
 					let contentType = getContentType(request);
@@ -139,14 +143,13 @@ function appRequest(request, response, router){
 								requestBodyData = JSON.parse(requestBodyDataString);
 							}
 						}
-						router.setArgs(router.getArgs().push(requestBodyData))
-						matchedRule.args.push(requestBodyData);
+						router.modArgs('data', requestBodyData);
 					}
 				}
 				if(response.statusCode === 200){
 					// For GET and POST (all current valid methods)
 					// call the onMatch function of the matched rule
-					matchedRule.onMatch.apply(this, matchedRule.args);
+					matchedRule.onMatch();
 				}
 			}
 			else {

@@ -10,7 +10,7 @@
   "main": "router.js",
   "author": "Nat Darke",
   "email": "nat@natdarke.com",
-  "license": "GPLv3",
+  "license": "GPL-3.0",
   "dependencies": {
     "concat-stream": "^1.6.0",
     "pug": "^2.0.0-rc.2",
