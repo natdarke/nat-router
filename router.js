@@ -7,16 +7,16 @@ const concat = require('concat-stream');
 const qs = require('querystring');
 
 function Router(){
-	let routes = [];
+	let rules = [];
 	let request = {};
 	let response = {};
-	let status = 200;
+	let statusRules = [];
 	let rootDir = '';
-	this.setRoute = function(method, pattern, handler){
-		routes.push({method, pattern, handler});
+	this.setRule = function(method, pattern, onMatch){
+		rules.push({method, pattern, onMatch});
 	};
-	this.getRoutes = function(){
-		return routes;
+	this.getRules = function(){
+		return rules;
 	};
 	this.setRequest = function(req){
 		request = req;
@@ -30,11 +30,11 @@ function Router(){
 	this.getResponse = function(){
 		return response;
 	};
-	this.setStatus = function(n){
-		status = n;
+	this.setStatusRule = function(statusCode, action){
+		statusRules[statusCode] = action;
 	};
-	this.getStatus = function(){
-		return status;
+	this.getStatusRules = function(){
+		return statusRules;
 	};
 	this.setRootDir = function(path){
 		rootDir = path;
@@ -44,23 +44,30 @@ function Router(){
 	};
 }
 Router.prototype = {
-	on : function(method, pattern, handler){
-		this.setRoute(method, pattern, handler);
+	rule : function(method, pattern, onMatch){
+		this.setRule(method, pattern, onMatch);
 	},
 	resolve : function(request, response){
-		if(!pathIsValid(request.url)){
-			response.writeHead(400,'Invalid Request');
-			response.end('Invalid Request');
-			return false;
-		}
 		this.setRequest(request);
 		this.setResponse(response);
-		const ext = path.extname(request.url);
-		if(ext!==''){
-			fileRequest(`${this.getRootDir()}${request.url}`, response, ext);
+		if(!(request.method==='POST' || request.method==='GET')){
+			response.statusCode = 400;
+			response.statusType = 'method';
+			non200Response(this);
+		}
+		else if(!pathIsValid(request.url)){
+			response.statusCode = 400;
+			response.statusType = 'url';
+			non200Response(this);
 		}
 		else {
-			appRequest(request, response, this);
+			const ext = path.extname(request.url);
+			if(ext===''){
+				appRequest(request, response, this);
+			}
+			else {
+				fileRequest(`${this.getRootDir()}${request.url}`, response, this, ext);
+			}
 		}
 	},
 	render : function(templatePath, data = {}){
@@ -68,91 +75,96 @@ Router.prototype = {
 		const ext = path.extname(templatePath);
 		if(ext==='.pug'){
 			const page = pug.compileFile(`${this.getRootDir()}${templatePath}`);
-			response.writeHead(200,{'Content-Type': 'text/html'});
-			response.end(page(data));
-		}
-		else if(ext==='.html'){
-			//single page js app
-			fileRequest(`${this.getRootDir()}${templatePath}`, response, ext);
+			response.setHeader('Content-Type', 'text/html');
+			response.write(page(data));
+			response.end();
 		}
 		else {
-			throw "Only pug and html files currently supported";
+			throw "Only pug files currently supported";
 		}
 	},
-	status : function(n,f){
-		return true;
+	file : function(path){
+		fileRequest(
+			`${this.getRootDir()}${path}`, 
+			this.getResponse(),
+			this
+		);
+	},
+	status : function(statusCode, onMatch){
+		this.setStatusRule(statusCode, onMatch);
 	}
-
 };
 function cleanPath(path){
 	// remove trailing slash
 	return path.charAt(path.length-1) === '/' ? path.slice(0, -1) : path; 
 }
 function pathIsValid(path){
+	// tests that path has only legal URI characters
 	return !(/[^A-Z|a-z|0-9|-|.|_|~|:|\/|\?|#|\[|\]|@|!|$|&|'|\(|\)|\*|\+|,|;|=|`]/.test(path));
 }
 function appRequest(request, response, router){
-	let routes = router.getRoutes();
-	var matchedRoute = matchRoute(routes, request);
-	if(matchedRoute){
-		if(matchedRoute.method==='POST'){
-			appPostRequest(request, response, matchedRoute);
+	let rules = router.getRules();
+	let matchedRule = matchRule(rules, request);
+	response.statusCode = 200; //default
+	let chunks = [];
+	request.on('data', chunk => chunks.push(chunk));
+	request.on(
+		'end', 
+		() => {
+			if(matchedRule){
+				if(matchedRule.method === 'POST'){
+					// if POST then add body data to the arguments passed to the 'onMatch' function 
+					let contentType = getContentType(request);
+					if(contentType === 'unsupported'){
+						response.statusCode = 415; 
+						response.statusType = 'post';
+					}
+					else {
+						var requestBodyData = {};
+						if(chunks.length > 0){
+							const requestBodyDataString = Buffer.concat(chunks).toString();
+							if(contentType === 'urlencoded'){
+								requestBodyData = qs.parse(requestBodyDataString);
+							}
+							else if(contentType === 'json'){
+								requestBodyData = JSON.parse(requestBodyDataString);
+							}
+						}
+						matchedRule.args.push(requestBodyData);
+					}
+				}
+				if(response.statusCode === 200){
+					// For GET and POST (all current valid methods)
+					// call the onMatch function of the matched rule
+					matchedRule.onMatch.apply(this, matchedRule.args);
+				}
+			}
+			else {
+				response.statusCode = 404;
+			}
+			if(response.statusCode !== 200){
+				non200Response(router);
+			}
 		}
-		else if(matchedRoute.method==='GET'){
-			matchedRoute.handler.apply(this, matchedRoute.args);
-		}
-		else {
-			throw('Only GET and POST methods currently supported');
-		}
-	}
-	else{
-		response.writeHead(404,'Page Not found');
-		response.end('Page Not Found');
-	}
+	);
 }
-function matchRoute(routes, request){
-	let matchedRoute;
+function matchRule(rules, request){
+	let matchedRule;
 	const urlPath = cleanPath(request.url);
-	for(let i=0; i<routes.length; i++){
-		if(request.method===routes[i].method){
-			const parsedPath = parsePath(urlPath, routes[i].pattern);
+	for(let i = 0; i < rules.length; i++){
+		if(request.method === rules[i].method){
+			const parsedPath = parsePath(urlPath, rules[i].pattern);
 			if(parsedPath.match){
-				matchedRoute = routes[i];
-				matchedRoute.args = parsedPath.args;
+				matchedRule = rules[i];
+				matchedRule.args = parsedPath.args;
 				break;
 			}
 		}
 	}
-	return matchedRoute;
+	return matchedRule;
 }
-function parsePath(path, pattern){
-	let parsed = {
-		match : true,
-		args : []
-	};
-	if(pattern!=='/*'){
-		//if pattern is not for single page js app i.e. routing not done on client side
-		const patternArray = pattern.split('/');
-		const pathArray = path.split('/');
-		if(patternArray.length !== pathArray.length){
-			parsed.match = false;
-			return parsed;
-		}
-		for(let i=1; i<patternArray.length; i++){
-			if(patternArray[i].charAt(0) === ':'){
-				parsed.args.push(pathArray[i]);
-			}
-			else{
-				if(patternArray[i] !== pathArray[i]){
-					parsed.match = false;
-					break;
-				}
-			}
-		}
-	}
-	return parsed;
-}
-function fileRequest(filePath, response, ext){	
+function fileRequest(filePath, response, router, ext){
+	ext = ext || path.extname(filePath);
 	const mimeType = {
 		'.ico': 'image/x-icon',
 		'.html': 'text/html',
@@ -175,53 +187,79 @@ function fileRequest(filePath, response, ext){
 			function(error, data){
 				if(error){
 					response.writeHead(404, {});
-					response.end();
 				} 
 				else{
 					response.writeHead(200,{
 						'Content-type': mimeType[ext]
 					});
-					response.end(data);
+					response.write(data);
 				}
+				response.end();
 			}
 		);
 	}
 	else{
 		response.statusCode = 415;
-		response.end('Unsupported Media Type');
+		response.statusType = 'file';
+		non200Response(router);
 	}
 }
-function appPostRequest(request, response, matchedRoute){
-	let chunks = [];
-	request.on('data', chunk => chunks.push(chunk));
-	if(request.headers['content-type'].indexOf('application/x-www-form-urlencoded')!==-1){
-		request.on(
-			'end', 
-			() => {
-				matchedRoute.args.push(
-					qs.parse(
-						Buffer.concat(chunks).toString()
-					)
-				);
-				matchedRoute.handler.apply(this, matchedRoute.args);
-			}
-		);
-	}
-	else if(request.headers['content-type'].indexOf('application/json')!==-1){
-		request.on(
-			'end', 
-			() => {
-				const chunksArray = Buffer.concat(chunks);
-				const chunksStr = chunks.toString();
-				const jsonData = JSON.parse(chunksStr);
-				matchedRoute.args.push(jsonData);
-				matchedRoute.handler.apply(this, matchedRoute.args);
-			}
-		);
+function parsePath(urlPath, pattern){
+	let parsed = {
+		match : true,
+		args : []
+	};
+	if(pattern==='*'){
+		// for single page js apps
+		// all url paths are considered a match
+		// because routing to be done on the client side
+		return parsed;
 	}
 	else{
-		response.statusCode = 415;
-		response.end('Unsupported Media Type');
+		const patternArray = pattern.split('/');
+		const urlPathArray = urlPath.split('/');
+		if(patternArray.length !== urlPathArray.length){
+			parsed.match = false;
+			return parsed;
+		}
+		for(let i=1; i<patternArray.length; i++){
+			if(patternArray[i].charAt(0) === ':'){
+				parsed.args.push(urlPathArray[i]);
+			}
+			else{
+				if(patternArray[i] !== urlPathArray[i]){
+					parsed.match = false;
+					break;
+				}
+			}
+		}
+	}
+	return parsed;
+}
+function getContentType(request){
+	// currently only POST content-type (aka MIME type or media type)
+	// 'application/x-www-form-urlencoded' (typically forms) and 
+	// 'application/json' (typically webhooks or other API requests)
+	// are supported
+	let contentType = 'unsupported';
+	if(request.headers['content-type']){
+		if(request.headers['content-type'].indexOf('application/x-www-form-urlencoded')!==-1){
+			contentType = 'urlencoded';
+		}
+		else if (request.headers['content-type'].indexOf('application/json')!==-1){
+			contentType = 'json';
+		}
+	}
+	return contentType;
+}
+function non200Response(router){
+	let response = router.getResponse();
+	let statusRules = router.getStatusRules();
+	if(statusRules[response.statusCode]){
+		statusRules[response.statusCode]();
+	}
+	else {
+		response.end();
 	}
 }
 module.exports = new Router();
