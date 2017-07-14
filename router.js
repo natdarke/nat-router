@@ -5,6 +5,7 @@ const url = require('url');
 const path = require('path');
 const concat = require('concat-stream');
 const qs = require('querystring');
+const parsePathPattern = require('parse-path-pattern');
 
 function Router(){
 	let rules = [];
@@ -145,7 +146,6 @@ function appRequest(request, response, router){
 				if(response.statusCode === 200){
 					// For GET and POST (all current valid methods)
 					// call the onMatch function of the matched rule
-					console.log(matchedRule.args);
 					matchedRule.onMatch.apply(this, matchedRule.args);
 				}
 			}
@@ -163,7 +163,7 @@ function matchRule(rules, request){
 	const urlPath = cleanPath(request.url);
 	for(let i = 0; i < rules.length; i++){
 		if(request.method === rules[i].method){
-			const parsedPath = parsePath(urlPath, rules[i].pattern);
+			const parsedPath = parsePathPattern(urlPath, rules[i].pattern);
 			if(parsedPath.match){
 				matchedRule = rules[i];
 				matchedRule.args = parsedPath.args;
@@ -213,38 +213,6 @@ function fileRequest(filePath, response, router, ext){
 		response.statusType = 'file';
 		non200Response(router);
 	}
-}
-function parsePath(urlPath, pattern){
-	let parsed = {
-		match : true,
-		args : []
-	};
-	if(pattern==='*'){
-		// for single page js apps
-		// all url paths are considered a match
-		// because routing to be done on the client side
-		return parsed;
-	}
-	else{
-		const patternArray = pattern.split('/');
-		const urlPathArray = urlPath.split('/');
-		if(patternArray.length !== urlPathArray.length){
-			parsed.match = false;
-			return parsed;
-		}
-		for(let i=1; i<patternArray.length; i++){
-			if(patternArray[i].charAt(0) === ':'){
-				parsed.args.push(urlPathArray[i]);
-			}
-			else{
-				if(patternArray[i] !== urlPathArray[i]){
-					parsed.match = false;
-					break;
-				}
-			}
-		}
-	}
-	return parsed;
 }
 
 function getContentType(request){
