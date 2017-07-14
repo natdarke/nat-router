@@ -10,10 +10,11 @@
   "main": "router.js",
   "author": "Nat Darke",
   "email": "nat@natdarke.com",
-  "license": "ISC",
+  "license": "GPLv3",
   "dependencies": {
     "concat-stream": "^1.6.0",
-    "pug": "^2.0.0-rc.2"
+    "pug": "^2.0.0-rc.2",
+    "parse-path-pattern": "^0.0.1"
   },
   "engines" : { "node" : ">=7.10.0" }
 }

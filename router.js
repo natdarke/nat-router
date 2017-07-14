@@ -10,6 +10,7 @@ function Router(){
 	let rules = [];
 	let request = {};
 	let response = {};
+	let args = [];
 	let statusRules = [];
 	let rootDir = '';
 	this.setRule = function(method, pattern, onMatch){
@@ -29,6 +30,12 @@ function Router(){
 	};
 	this.getResponse = function(){
 		return response;
+	};
+	this.setArgs = function(args){
+		args = args;
+	};
+	this.getArgs = function(){
+		return args;
 	};
 	this.setStatusRule = function(statusCode, action){
 		statusRules[statusCode] = action;
@@ -105,6 +112,7 @@ function pathIsValid(path){
 function appRequest(request, response, router){
 	let rules = router.getRules();
 	let matchedRule = matchRule(rules, request);
+	router.setArgs(matchedRule.args);
 	response.statusCode = 200; //default
 	let chunks = [];
 	request.on('data', chunk => chunks.push(chunk));
@@ -130,12 +138,14 @@ function appRequest(request, response, router){
 								requestBodyData = JSON.parse(requestBodyDataString);
 							}
 						}
+						router.setArgs(router.getArgs().push(requestBodyData))
 						matchedRule.args.push(requestBodyData);
 					}
 				}
 				if(response.statusCode === 200){
 					// For GET and POST (all current valid methods)
 					// call the onMatch function of the matched rule
+					console.log(matchedRule.args);
 					matchedRule.onMatch.apply(this, matchedRule.args);
 				}
 			}
@@ -236,6 +246,7 @@ function parsePath(urlPath, pattern){
 	}
 	return parsed;
 }
+
 function getContentType(request){
 	// currently only POST content-type (aka MIME type or media type)
 	// 'application/x-www-form-urlencoded' (typically forms) and 
