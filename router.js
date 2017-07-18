@@ -5,7 +5,7 @@ const url = require('url');
 const path = require('path');
 const concat = require('concat-stream');
 const qs = require('querystring');
-const parsePathPattern = require('../parse-path-pattern/parse-path-pattern.js');
+const parsePathPattern = require('./parse-path-pattern.js');
 
 function Router(){
 	let rules = [];
