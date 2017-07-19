@@ -5,7 +5,11 @@ const url = require('url');
 const path = require('path');
 const concat = require('concat-stream');
 const qs = require('querystring');
-const parsePathPattern = require('./parse-path-pattern.js');
+const contentTypeIs = require('./content-type-is.js');
+const parseBodyData = require('./parse-body-data.js');
+const fileTypeIs = require('./file-type-is.js');
+const matchRule = require('./match-rule.js');
+const cleanAndValidateUrlPath = require('./clean-and-validate-url-path.js');
 
 function Router(){
 	let rules = [];
@@ -66,18 +70,59 @@ Router.prototype = {
 			response.statusType = 'method';
 			non200Response(this);
 		}
-		else if(!pathIsValid(request.url)){
-			response.statusCode = 400;
-			response.statusType = 'url';
-			non200Response(this);
-		}
 		else {
-			const ext = path.extname(request.url);
-			if(ext===''){
-				appRequest(request, response, this);
+			request.urlPath = cleanAndValidateUrlPath(request.url);
+			if(request.urlPath){
+				const ext = path.extname(request.urlPath);
+				if(ext===''){
+					// this is a request to the application i.e. not a file request
+					let rules = this.getRules();
+					let matchedRule = matchRule(rules, request);
+					response.statusCode = 200; //default
+					let chunks = [];
+					request.on('data', chunk => chunks.push(chunk));
+					request.on(
+						'end', 
+						() => {
+							if(matchedRule){
+								this.setArgs(matchedRule.args);
+								if(matchedRule.method === 'POST'){
+									// if POST then add body data to the arguments passed to the 'onMatch' function 
+									let contentType = contentTypeIs(request);
+									if(contentType === 'unsupported') {
+										response.statusCode = 415; 
+										response.statusType = 'post';
+									}
+									else {
+										var bodyData = parseBodyData(chunks, contentType);
+										this.modArgs('data', bodyData);
+									}
+								}
+								if(response.statusCode === 200){
+									// For GET and POST (all current valid methods)
+									// call the onMatch function of the matched rule
+									matchedRule.onMatch();
+								}
+							}
+							else {
+								response.statusCode = 404;
+							}
+							if(response.statusCode !== 200){
+								non200Response(this);
+							}
+						}
+					);
+				}
+				else {
+					// request for a file
+					this.file(request.urlPath);
+				}
 			}
 			else {
-				fileRequest(`${this.getRootDir()}${request.url}`, response, this, ext);
+				// path has illegal chars
+				response.statusCode = 400;
+				response.statusType = 'url';
+				non200Response(this);
 			}
 		}
 	},
@@ -95,145 +140,39 @@ Router.prototype = {
 			throw "Only pug files currently supported";
 		}
 	},
-	file : function(path){
-		fileRequest(
-			`${this.getRootDir()}${path}`, 
-			this.getResponse(),
-			this
-		);
+	file : function(filePath){
+		const ext = path.extname(filePath);
+		const fileType = fileTypeIs(ext);
+		const request = this.getRequest();
+		const response = this.getResponse();
+		if(fileType){
+			fs.readFile(
+				`${this.getRootDir()}${filePath}`, 
+				function(error, data){
+					if(error){
+						response.writeHead(404, {});
+					} 
+					else{
+						response.writeHead(200,{
+							'Content-type': fileType
+						});
+						response.write(data);
+					}
+					response.end();
+				}
+			);
+		}
+		else{
+			response.statusCode = 415;
+			response.statusType = 'file';
+			non200Response(router);
+		}
 	},
 	status : function(statusCode, onMatch){
 		this.setStatusRule(statusCode, onMatch);
 	}
 };
-function cleanPath(path){
-	// remove trailing slash
-	return path.charAt(path.length-1) === '/' ? path.slice(0, -1) : path; 
-}
-function pathIsValid(path){
-	// tests that path has only legal URI characters
-	return !(/[^A-Z|a-z|0-9|-|.|_|~|:|\/|\?|#|\[|\]|@|!|$|&|'|\(|\)|\*|\+|,|;|=|`]/.test(path));
-}
-function appRequest(request, response, router){
-	let rules = router.getRules();
-	let matchedRule = matchRule(rules, request);
-	response.statusCode = 200; //default
-	let chunks = [];
-	request.on('data', chunk => chunks.push(chunk));
-	request.on(
-		'end', 
-		() => {
-			if(matchedRule){
-				router.setArgs(matchedRule.args);
-				if(matchedRule.method === 'POST'){
-					// if POST then add body data to the arguments passed to the 'onMatch' function 
-					let contentType = getContentType(request);
-					if(contentType === 'unsupported'){
-						response.statusCode = 415; 
-						response.statusType = 'post';
-					}
-					else {
-						var requestBodyData = {};
-						if(chunks.length > 0){
-							const requestBodyDataString = Buffer.concat(chunks).toString();
-							if(contentType === 'urlencoded'){
-								requestBodyData = qs.parse(requestBodyDataString);
-							}
-							else if(contentType === 'json'){
-								requestBodyData = JSON.parse(requestBodyDataString);
-							}
-						}
-						router.modArgs('data', requestBodyData);
-					}
-				}
-				if(response.statusCode === 200){
-					// For GET and POST (all current valid methods)
-					// call the onMatch function of the matched rule
-					matchedRule.onMatch();
-				}
-			}
-			else {
-				response.statusCode = 404;
-			}
-			if(response.statusCode !== 200){
-				non200Response(router);
-			}
-		}
-	);
-}
-function matchRule(rules, request){
-	let matchedRule;
-	const urlPath = cleanPath(request.url);
-	for(let i = 0; i < rules.length; i++){
-		if(request.method === rules[i].method){
-			const parsedPath = parsePathPattern(urlPath, rules[i].pattern);
-			if(parsedPath.match){
-				matchedRule = rules[i];
-				matchedRule.args = parsedPath.args;
-				break;
-			}
-		}
-	}
-	return matchedRule;
-}
-function fileRequest(filePath, response, router, ext){
-	ext = ext || path.extname(filePath);
-	const mimeType = {
-		'.ico': 'image/x-icon',
-		'.html': 'text/html',
-		'.js': 'text/javascript',
-		'.json': 'application/json',
-		'.css': 'text/css',
-		'.png': 'image/png',
-		'.jpg': 'image/jpeg',
-		'.wav': 'audio/wav',
-		'.mp3': 'audio/mpeg',
-		'.svg': 'image/svg+xml',
-		'.pdf': 'application/pdf',
-		'.doc': 'application/msword',
-		'.eot': 'appliaction/vnd.ms-fontobject',
-		'.ttf': 'aplication/font-sfnt'
-	};
-	if(mimeType[ext]){
-		fs.readFile(
-			filePath, 
-			function(error, data){
-				if(error){
-					response.writeHead(404, {});
-				} 
-				else{
-					response.writeHead(200,{
-						'Content-type': mimeType[ext]
-					});
-					response.write(data);
-				}
-				response.end();
-			}
-		);
-	}
-	else{
-		response.statusCode = 415;
-		response.statusType = 'file';
-		non200Response(router);
-	}
-}
 
-function getContentType(request){
-	// currently only POST content-type (aka MIME type or media type)
-	// 'application/x-www-form-urlencoded' (typically forms) and 
-	// 'application/json' (typically webhooks or other API requests)
-	// are supported
-	let contentType = 'unsupported';
-	if(request.headers['content-type']){
-		if(request.headers['content-type'].indexOf('application/x-www-form-urlencoded')!==-1){
-			contentType = 'urlencoded';
-		}
-		else if (request.headers['content-type'].indexOf('application/json')!==-1){
-			contentType = 'json';
-		}
-	}
-	return contentType;
-}
 function non200Response(router){
 	let response = router.getResponse();
 	let statusRules = router.getStatusRules();
