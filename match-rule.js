@@ -10,7 +10,7 @@ module.exports = (rules, request) => {
 				break;
 			}
 			else{
-				const parsedPath = parsePathPattern(request.urlPath, rules[i].pattern);
+				const parsedPath = parsePathPattern(request.url, rules[i].pattern);
 				if(parsedPath.match){
 					matchedRule = rules[i];
 					matchedRule.args = parsedPath.args;
