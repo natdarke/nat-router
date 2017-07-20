@@ -61,14 +61,14 @@ function Router(){
 	};
 }
 Router.prototype = {
-	rule : function(method, pattern, onMatch){
+	rule : function(method, pattern, onMatch) {
 		this.setRule(method, pattern, onMatch);
 	},
-	resolve : function(request, response){
+	resolve : function(request, response) {
 		this.setRequest(request);
 		this.setResponse(response);
 		const ext = path.extname(request.url);
-		if(ext===''){
+		if(ext === '') {
 			// request for the application
 			// to do : clean path
 			let rules = this.getRules();
@@ -82,7 +82,7 @@ Router.prototype = {
 					const analysedRequest = analyseRequest(request, this.getRules());
 					response.statusCode = analysedRequest.response.statusCode;
 					// if request has passed all tests and can be considered a success
-					if(analysedRequest.response.statusCode === 200){
+					if(analysedRequest.response.statusCode === 200) {
 						// set the 'arguments' taken from the url pattern
 						// will be available to the html template rendering engine
 						this.setArgs(analysedRequest.matchedRule.args);
@@ -94,10 +94,10 @@ Router.prototype = {
 						// call the matched rule's onMatch function, as defined in the user's API router rules
 						analysedRequest.matchedRule.onMatch();
 					}
-					else{
+					else {
 						// send appropriate failed-request response
 						let statusRules = this.getStatusRules();
-						if(statusRules[response.statusCode]){
+						if(statusRules[response.statusCode]) {
 							// if custom rule exists, call it 
 							statusRules[response.statusCode]();
 						}
@@ -113,7 +113,7 @@ Router.prototype = {
 			this.file(request.urlPath);
 		}
 	},
-	render : function(templatePath, customArgs = null){
+	render : function(templatePath, customArgs = null) {
 		let response = this.getResponse();
 		let templateArgs = customArgs || this.getArgs();
 		const ext = path.extname(templatePath);
@@ -127,7 +127,7 @@ Router.prototype = {
 			throw "Only pug files currently supported";
 		}
 	},
-	file : function(filePath){
+	file : function(filePath) {
 		const ext = path.extname(filePath);
 		const fileType = fileTypeIs(ext);
 		const request = this.getRequest();
@@ -154,7 +154,7 @@ Router.prototype = {
 			response.end();
 		}
 	},
-	status : function(statusCode, onMatch){
+	status : function(statusCode, onMatch) {
 		this.setStatusRule(statusCode, onMatch);
 	}
 };
