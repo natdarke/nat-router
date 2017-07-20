@@ -5,8 +5,6 @@ const url = require('url');
 const path = require('path');
 const concat = require('concat-stream');
 const qs = require('querystring');
-const parseBodyData = require('./parse-body-data.js');
-const analyseRequest = require('./analyse-request.js');
 
 function Router(){
 	let rules = [];
@@ -82,8 +80,17 @@ Router.prototype = {
 						this.setArgs(analysedRequest.matchedRule.args);
 						if(analysedRequest.matchedRule.method === 'POST'){
 							// add body data to the 'arguments'
-							var bodyData = parseBodyData(chunks, analysedRequest.body.type);
-							this.modArgs('data', bodyData);
+							if(chunks.length > 0){
+								let bodyData = {};
+								const bodyDataString = Buffer.concat(chunks).toString();
+								if(analysedRequest.body.type === 'urlencoded'){
+									bodyData = qs.parse(bodyDataString);
+								}
+								else if(analysedRequest.body.type === 'json'){
+									bodyData = JSON.parse(bodyDataString);
+								}
+								this.modArgs('data', bodyData);
+							}
 						}
 						// call the matched rule's onMatch function, as defined in the user's API router rules
 						analysedRequest.matchedRule.onMatch();
@@ -169,5 +176,103 @@ Router.prototype = {
 		this.setStatusRule(statusCode, onMatch);
 	}
 };
+
+function analyseRequest(request, rules){
+	let results = {
+		response: {
+			statusCode: 200,
+			statusCodeType: undefined
+		},
+		body: {
+			type: undefined
+		},
+		matchedRule : undefined
+	};
+	if(!(request.method==='POST' || request.method==='GET')){
+		results.response.statusCode = 400;
+		results.response.statusType = 'method';
+	}
+	else if(/[^A-Z|a-z|0-9|-|.|_|~|:|\/|\?|#|\[|\]|@|!|$|&|'|\(|\)|\*|\+|,|;|=|`]/.test(request.url)){
+		// url has invalid characters
+		results.response.statusCode = 400;
+		results.response.statusType = 'url';
+	}
+	else if(request.method==='POST'){
+		if(request.headers['content-type']){
+			// currently only POST content-type (aka MIME type or media type)
+			// 'application/x-www-form-urlencoded' (typically forms) and 
+			// 'application/json' (typically webhooks or other API requests)
+			// are supported
+			if(request.headers['content-type'].indexOf('application/x-www-form-urlencoded')!==-1){
+				results.body.type = 'urlencoded';
+			}
+			else if (request.headers['content-type'].indexOf('application/json')!==-1){
+				results.body.type = 'json';
+			}
+			else {
+				results.response.statusCode = 415;
+				results.response.statusType = 'unsupported-content-type';
+			}
+		}
+		else {
+			results.response.statusCode = 415;
+			results.response.statusType = 'missing-content-type';
+		}
+	}
+	if(results.response.statusCode === 200){
+		results.matchedRule = (() => {
+			let matchedRule = false;
+			for(let i = 0; i < rules.length; i++){
+				if(request.method === rules[i].method){
+					if(rules[i].pattern==='*'){
+						// if rule's pattern is for single page js client-side app
+						matchedRule = rules[i];
+						matchedRule.args = [];
+						break;
+					}
+					else{
+						const parsedPath = parsePathPattern(request.url, rules[i].pattern);
+						if(parsedPath.match){
+							matchedRule = rules[i];
+							matchedRule.args = parsedPath.args;
+							break;
+						}
+					}
+				}
+			}
+			return matchedRule;
+		})();
+		if(!results.matchedRule){
+			results.response.statusCode = 404;
+		}
+	}
+	return results;
+}
+
+function parsePathPattern(urlPath, pattern){
+	var parsed = {
+		match : true,
+		args : {}
+	};
+	urlPath = urlPath.replace(/\/$/, ""); // remove trailing slash
+	const patternArray = pattern.split('/');
+	const urlPathArray = urlPath.split('/');
+	if(patternArray.length !== urlPathArray.length){
+		parsed.match = false;
+		return parsed;
+	}
+	for(let i=1; i<patternArray.length; i++){
+		if(patternArray[i].charAt(0) === ':'){
+			parsed.args[patternArray[i].substring(1)] = urlPathArray[i];
+		}
+		else{
+			if(patternArray[i] !== urlPathArray[i]){
+				parsed.match = false;
+				break;
+			}
+		}
+	}
+	return parsed;
+}
 
 module.exports = new Router();
