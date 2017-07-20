@@ -13,6 +13,7 @@ function Router(){
 	let args = {};
 	let statusRules = [];
 	let rootDir = '';
+	let analysedRequest = {};
 	this.setRule = function(method, pattern, onMatch){
 		rules.push({method, pattern, onMatch});
 	};
@@ -52,6 +53,12 @@ function Router(){
 	this.getRootDir = function(){
 		return rootDir;
 	};
+	this.setAnalysedRequest = function(info){
+		analysedRequest = info;
+	};
+	this.getStatusCodeType = function(){
+		return analysedRequest.response.statusCodeType;
+	};
 }
 Router.prototype = {
 	rule : function(method, pattern, onMatch) {
@@ -72,6 +79,7 @@ Router.prototype = {
 					// look at the request and the user's API router rules
 					// create an object with useful info about how to proceed 
 					const analysedRequest = analyseRequest(request, this.getRules());
+					this.setAnalysedRequest(analysedRequest);
 					response.statusCode = analysedRequest.response.statusCode;
 					// if request has passed all tests and can be considered a success
 					if(analysedRequest.response.statusCode === 200) {
@@ -190,12 +198,12 @@ function analyseRequest(request, rules){
 	};
 	if(!(request.method==='POST' || request.method==='GET')){
 		results.response.statusCode = 400;
-		results.response.statusType = 'method';
+		results.response.statusCodeType = 'Method';
 	}
 	else if(/[^A-Z|a-z|0-9|-|.|_|~|:|\/|\?|#|\[|\]|@|!|$|&|'|\(|\)|\*|\+|,|;|=|`]/.test(request.url)){
 		// url has invalid characters
 		results.response.statusCode = 400;
-		results.response.statusType = 'url';
+		results.response.statusCodeType = 'URL';
 	}
 	else if(request.method==='POST'){
 		if(request.headers['content-type']){
@@ -211,12 +219,12 @@ function analyseRequest(request, rules){
 			}
 			else {
 				results.response.statusCode = 415;
-				results.response.statusType = 'unsupported-content-type';
+				results.response.statusCodeType = 'Unsupported Content Type';
 			}
 		}
 		else {
 			results.response.statusCode = 415;
-			results.response.statusType = 'missing-content-type';
+			results.response.statusCodeType = 'Missing Content Type';
 		}
 	}
 	if(results.response.statusCode === 200){
