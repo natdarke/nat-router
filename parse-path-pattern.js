@@ -3,6 +3,7 @@ module.exports = (urlPath, pattern)=>{
 		match : true,
 		args : {}
 	};
+	urlPath = urlPath.replace(/\/$/, ""); // remove trailing slash
 	const patternArray = pattern.split('/');
 	const urlPathArray = urlPath.split('/');
 	if(patternArray.length !== urlPathArray.length){
