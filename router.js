@@ -5,13 +5,8 @@ const url = require('url');
 const path = require('path');
 const concat = require('concat-stream');
 const qs = require('querystring');
-const contentTypeIs = require('./content-type-is.js');
 const parseBodyData = require('./parse-body-data.js');
-const fileTypeIs = require('./file-type-is.js');
-const matchRule = require('./match-rule.js');
 const analyseRequest = require('./analyse-request.js');
-const cleanAndValidateUrlPath = require('./clean-and-validate-url-path.js');
-
 
 function Router(){
 	let rules = [];
@@ -70,7 +65,6 @@ Router.prototype = {
 		const ext = path.extname(request.url);
 		if(ext === '') {
 			// request for the application
-			// to do : clean path
 			let rules = this.getRules();
 			let chunks = [];
 			request.on('data', chunk => chunks.push(chunk));
@@ -128,8 +122,25 @@ Router.prototype = {
 		}
 	},
 	file : function(filePath) {
+		const mimeType = {
+			'.ico': 'image/x-icon',
+			'.html': 'text/html',
+			'.js': 'text/javascript',
+			'.json': 'application/json',
+			'.css': 'text/css',
+			'.png': 'image/png',
+			'.jpg': 'image/jpeg',
+			'.wav': 'audio/wav',
+			'.mp3': 'audio/mpeg',
+			'.svg': 'image/svg+xml',
+			'.pdf': 'application/pdf',
+			'.doc': 'application/msword',
+			'.eot': 'application/vnd.ms-fontobject',
+			'.ttf': 'application/font-sfnt'
+		};
+		// MIME type aka content-type (in http headers)
 		const ext = path.extname(filePath);
-		const fileType = fileTypeIs(ext);
+		const fileType = mimeType[ext] || false;
 		const request = this.getRequest();
 		const response = this.getResponse();
 		if(fileType){
