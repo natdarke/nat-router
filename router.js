@@ -79,7 +79,9 @@ Router.prototype = {
 					// look at the request and the user's API router rules
 					// create an object with useful info about how to proceed 
 					const analysedRequest = analyseRequest(request, this.getRules());
+					// make this data public
 					this.setAnalysedRequest(analysedRequest);
+					// set status code for the response
 					response.statusCode = analysedRequest.response.statusCode;
 					// if request has passed all tests and can be considered a success
 					if(analysedRequest.response.statusCode === 200) {
