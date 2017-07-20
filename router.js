@@ -122,7 +122,7 @@ Router.prototype = {
 			this.file(request.url);
 		}
 	},
-	render : function(templatePath, customArgs = null) {
+	template : function(templatePath, customArgs = null) {
 		let response = this.getResponse();
 		let templateArgs = customArgs || this.getArgs();
 		const ext = path.extname(templatePath);
