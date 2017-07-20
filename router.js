@@ -110,7 +110,7 @@ Router.prototype = {
 		}
 		else {
 			// request for a file
-			this.file(request.urlPath);
+			this.file(request.url);
 		}
 	},
 	render : function(templatePath, customArgs = null) {
