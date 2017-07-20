@@ -151,34 +151,12 @@ Router.prototype = {
 		}
 		else{
 			response.statusCode = 415;
-			response.statusType = 'file';
-			non200Response(router);
+			response.end();
 		}
 	},
 	status : function(statusCode, onMatch){
 		this.setStatusRule(statusCode, onMatch);
 	}
 };
-
-function non200Response(router){
-	let response = router.getResponse();
-	let statusRules = router.getStatusRules();
-	if(statusRules[response.statusCode]){
-		statusRules[response.statusCode]();
-	}
-	else {
-		response.end();
-	}
-}
-function failedRequest(router){
-	let response = router.getResponse();
-	let statusRules = router.getStatusRules();
-	if(statusRules[response.statusCode]){
-		statusRules[response.statusCode]();
-	}
-	else {
-		response.end();
-	}
-}
 
 module.exports = new Router();
