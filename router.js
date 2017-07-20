@@ -148,7 +148,7 @@ Router.prototype = {
 			request.on(
 				'end', 
 				() => {
-					// look at the request and the user-generated router rules
+					// look at the request and the user's API router rules
 					// create an object with useful info about how to proceed 
 					const analysedRequest = analyseRequest(request, this.getRules());
 					response.statusCode = analysedRequest.response.statusCode;
@@ -162,7 +162,7 @@ Router.prototype = {
 							var bodyData = parseBodyData(chunks, analysedRequest.body.type);
 							this.modArgs('data', bodyData);
 						}
-						// call the matched rule's onMatch function, as defined using the API rule method
+						// call the matched rule's onMatch function, as defined in the user's API router rules
 						analysedRequest.matchedRule.onMatch();
 					}
 					else{
