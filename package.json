@@ -1,6 +1,6 @@
 {
   "name": "nat-router",
-  "version": "0.0.8",
+  "version": "0.0.9",
   "description": "Basic Router",
   "homepage": "https://github.com/natdarke/nat-router",
   "repository": {
@@ -13,8 +13,7 @@
   "license": "GPL-3.0",
   "dependencies": {
     "concat-stream": "^1.6.0",
-    "pug": "^2.0.0-rc.2",
-    "parse-path-pattern": "^0.0.1"
+    "pug": "^2.0.0-rc.2"
   },
   "engines" : { "node" : ">=7.10.0" }
 }
