@@ -205,7 +205,7 @@ function analyseRequest(request, rules){
 	else if(/[^A-Z|a-z|0-9|-|.|_|~|:|\/|\?|#|\[|\]|@|!|$|&|'|\(|\)|\*|\+|,|;|=|`]/.test(request.url)){
 		// url has invalid characters
 		results.response.statusCode = 400;
-		results.response.statusCodeType = 'URL';
+		results.response.statusCodeType = 'URL: Illegal Characters';
 	}
 	else if(request.method==='POST'){
 		if(request.headers['content-type']){
@@ -221,12 +221,12 @@ function analyseRequest(request, rules){
 			}
 			else {
 				results.response.statusCode = 415;
-				results.response.statusCodeType = 'Unsupported Content Type';
+				results.response.statusCodeType = 'Content-Type: Unsupported ';
 			}
 		}
 		else {
 			results.response.statusCode = 415;
-			results.response.statusCodeType = 'Missing Content Type';
+			results.response.statusCodeType = 'Content-Type: Missing';
 		}
 	}
 	if(results.response.statusCode === 200){

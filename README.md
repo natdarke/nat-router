@@ -146,6 +146,12 @@ const router = require('nat-router');
    - The URL encoded form data submitted in the body of the request (if content-type is 'application/x-www-form-urlencoded')  
    - The JSON data (parsed) sent in the body of the request (if MIME type is 'application/json')
 
+### router.status(STATUS-CODE, CALLBACK)
+* Create custom HTML pages for failed requests.
+* Similar to router.rule, it allows you to use router.template or router.file for specific statusCodes like 400, 404 and 415. 
+* In addition, router.getStatusCodeType() returns a more specific reason for the failed request, allowing you to give better information in your HTML page. At the moment, router.getStatusCodeType() will can return 'Content-Type: Unsupported' or 'Content-Type: Missing' for a 415:, 'URL: Illegal Characters' for a 400 . See examples for use.
+
+
 ### router.template(TEMPLATE-PATH [, TEMPLATE-DATA])
 * Used inside router.template. TEMPLATE-PATH is the file path of Pug template to be used. Optional TEMPLATE-DATA is data that will be passed to the template. It replaces any automatically generated data from PATTERN in router.rule as well as any POST body data
 
