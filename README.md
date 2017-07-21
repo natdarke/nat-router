@@ -147,8 +147,9 @@ const router = require('nat-router');
    - The JSON data (parsed) sent in the body of the request (if MIME type is 'application/json')
 
 ### router.status(STATUS-CODE, CALLBACK)
-* Create custom HTML pages for failed requests.
-* Similar to router.rule, it allows you to use router.template or router.file for specific statusCodes like 400, 404 and 415. 
+* Create custom HTML pages, or templates for failed requests.
+* Similar to router.rule, it allows you to use router.template or router.file for specific statusCodes like 400, 404 and 415.
+* If you use router.template inside the CALLBACK, you can optionally add an object which is passed to the template, thus allowing you to have one template for all failed requests, with varying content
 * In addition, router.getStatusCodeType() returns a more specific reason for the failed request, allowing you to give better information in your HTML page. At the moment, router.getStatusCodeType() will can return 'Content-Type: Unsupported' or 'Content-Type: Missing' for a 415:, 'URL: Illegal Characters' for a 400 . See examples for use.
 
 
