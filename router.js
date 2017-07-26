@@ -132,8 +132,20 @@ Router.prototype = {
 		let response = this.getResponse();
 		let templateArgs = customArgs || this.getArgs();
 		const ext = path.extname(templatePath);
-		if(ext==='.pug'){
-			const page = pug.compileFile(`${this.getRootDir()}${templatePath}`);
+		if (ext === '.pug'){
+			const fullTemplatePath = `${this.getRootDir()}${templatePath}`;
+			fs.access(
+				fullTemplatePath,
+				(error) => {
+					if (error) {
+						if (error.code === 'ENOENT') {
+							throw `${fullTemplatePath} does not exist`;
+						}
+						throw error;
+					}
+				}
+			);
+			const page = pug.compileFile(fullTemplatePath);
 			response.setHeader('Content-Type', 'text/html');
 			response.write(page(templateArgs));
 			response.end();
