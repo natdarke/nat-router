@@ -14,6 +14,7 @@ function Router(){
 	let rules = [];
 	let request = {};
 	let response = {};
+	let callback = null;
 	let args = {};
 	let statusRules = [];
 	let rootDir = '';
@@ -24,17 +25,23 @@ function Router(){
 	this.getRules = function(){
 		return rules;
 	};
-	this.setRequest = function(req){
-		request = req;
+	this.setRequest = function(o){
+		request = o;
 	};
 	this.getRequest = function(){
 		return request;
 	};
-	this.setResponse = function(res){
-		response = res;
+	this.setResponse = function(o){
+		response = o;
 	};
 	this.getResponse = function(){
 		return response;
+	};
+	this.setCallback = function(fn){
+		callback = fn;
+	};
+	this.getCallback = function(){
+		return callback;
 	};
 	this.setArgs = function(a){
 		args = a;
@@ -45,20 +52,20 @@ function Router(){
 	this.modArgs = function(key, value){
 		args[key] = value;
 	};
-	this.setStatusRule = function(statusCode, action){
-		statusRules[statusCode] = action;
+	this.setStatusRule = function(n, fn){
+		statusRules[n] = fn;
 	};
 	this.getStatusRules = function(){
 		return statusRules;
 	};
-	this.setRootDir = function(path){
-		rootDir = path;
+	this.setRootDir = function(str){
+		rootDir = str;
 	};
 	this.getRootDir = function(){
 		return rootDir;
 	};
-	this.setAnalysedRequest = function(info){
-		analysedRequest = info;
+	this.setAnalysedRequest = function(o){
+		analysedRequest = o;
 	};
 	this.getStatusCodeType = function(){
 		return analysedRequest.response.statusCodeType;
@@ -68,9 +75,10 @@ Router.prototype = {
 	rule : function(method, pattern, onMatch) {
 		this.setRule(method, pattern, onMatch);
 	},
-	resolve : function(request, response) {
+	resolve : function(request, response, callback = null) {
 		this.setRequest(request);
 		this.setResponse(response);
+		this.setCallback(callback);
 		const ext = path.extname(request.url);
 		if(ext === '') {
 			// request for the application
@@ -117,6 +125,9 @@ Router.prototype = {
 							statusRules[response.statusCode]();
 						}
 						else {
+							if(typeof(this.getCallback())==='function'){
+								this.getCallback()();
+							};
 							response.end();
 						}
 					}
@@ -148,6 +159,10 @@ Router.prototype = {
 			const page = pug.compileFile(fullTemplatePath);
 			response.setHeader('Content-Type', 'text/html');
 			response.write(page(templateArgs));
+			console.log(this.getCallback());
+			if(typeof(this.getCallback())==='function'){
+				this.getCallback()();
+			};
 			response.end();
 		}
 		else {
@@ -189,12 +204,19 @@ Router.prototype = {
 						});
 						response.write(data);
 					}
+					if(typeof(this.getCallback())==='function'){
+						this.getCallback()();
+					};
 					response.end();
 				}
 			);
 		}
 		else{
 			response.statusCode = 415;
+			if(typeof(this.getCallback())==='function'){
+				var callback = this.getCallback();
+				callback();
+			};
 			response.end();
 		}
 	},
