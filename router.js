@@ -67,6 +67,9 @@ function Router(){
 	this.setAnalysedRequest = function(o){
 		analysedRequest = o;
 	};
+	this.getAnalysedRequest = function(){
+		return analysedRequest;
+	};
 	this.getStatusCodeType = function(){
 		return analysedRequest.response.statusCodeType;
 	};
