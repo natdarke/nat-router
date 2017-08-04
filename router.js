@@ -78,67 +78,70 @@ Router.prototype = {
 	rule : function(method, pattern, onMatch) {
 		this.setRule(method, pattern, onMatch);
 	},
-	resolve : function(request, response, callback = null) {
+	resolve : function(request, response, synchronousDelay = false) {
 		this.setRequest(request);
 		this.setResponse(response);
-		this.setCallback(callback);
 		const ext = path.extname(request.url);
 		if(ext === '') {
-			// request for the application
-			let rules = this.getRules();
-			let chunks = [];
-			request.on('data', chunk => chunks.push(chunk));
-			request.on(
-				'end', 
-				() => {
-					// look at the request and the user's API router rules
-					// create an object with useful info about how to proceed 
-					const analysedRequest = analyseRequest(request, this.getRules());
-					// make this data public
-					this.setAnalysedRequest(analysedRequest);
-					// set status code for the response
-					response.statusCode = analysedRequest.response.statusCode;
-					// if request has passed all tests and can be considered a success
-					if(analysedRequest.response.statusCode === 200) {
-						// set the 'arguments' taken from the url pattern
-						// will be available to the html template rendering engine
-						this.setArgs(analysedRequest.matchedRule.args);
-						if(analysedRequest.matchedRule.method === 'POST'){
-							// add body data to the 'arguments'
-							if(chunks.length > 0){
-								let bodyData = {};
-								const bodyDataString = Buffer.concat(chunks).toString();
-								if(analysedRequest.body.type === 'urlencoded'){
-									bodyData = qs.parse(bodyDataString);
-								}
-								else if(analysedRequest.body.type === 'json'){
-									bodyData = JSON.parse(bodyDataString);
-								}
-								this.modArgs('data', bodyData);
+			// if this is an application request
+			const analysedRequest = analyseRequest(request, this.getRules());
+			this.setAnalysedRequest(analysedRequest);
+			response.statusCode = analysedRequest.response.statusCode;
+			if(analysedRequest.response.statusCode===200){
+				// if the request is successful i.e. is valid and a matching rule was found
+				const analysedRequest = this.getAnalysedRequest();
+				this.setArgs(analysedRequest.matchedRule.args);
+				if(analysedRequest.matchedRule.method === 'POST'){
+					// The body of POST requests can be data of any size and type (MIME type)
+					// Node breaks the data down into 'chunks' (often just a single chunk)
+					// Chunks are stored as arrays of binary data. 
+					// 'Buffer' provides a way dealing with chunks
+						// In this case, converting into a string
+					// The server relies on the request emitting events:
+						// 'data' when a chunk is received
+						// 'end' after the last chunk is received
+					let chunks = [];
+					request.on('data', chunk => chunks.push(chunk));
+					request.on('end', () => {
+						if(chunks.length > 0) {	
+							let bodyData = {};
+							const bodyDataString = Buffer.concat(chunks).toString();
+							if(analysedRequest.body.type === 'urlencoded') {
+								bodyData = qs.parse(bodyDataString);
 							}
+							else if(analysedRequest.body.type === 'json') {
+								bodyData = JSON.parse(bodyDataString);
+							}
+							this.modArgs('data', bodyData);
 						}
-						// call the matched rule's onMatch function, as defined in the user's API router rules
-						analysedRequest.matchedRule.onMatch();
-					}
-					else {
-						// send appropriate failed-request response
-						let statusRules = this.getStatusRules();
-						if(statusRules[response.statusCode]) {
-							// if custom rule exists, call it 
-							statusRules[response.statusCode]();
-						}
-						else {
-							if(typeof(this.getCallback())==='function'){
-								this.getCallback()();
-							};
-							response.end();
-						}
-					}
+						// call the function declared in the router rule 
+						analysedRequest.matchedRule.onMatch(this.getArgs());
+					});
 				}
-			)
+				else if(analysedRequest.matchedRule.method === 'GET'){
+					// call the function declared in the router rule 
+					analysedRequest.matchedRule.onMatch(this.getArgs());
+				}
+				else {
+					throw "Request has not been analysed properly. Only POST and GET currently suppoerted. See function analyseRequest().";
+				}
+			}
+			else {
+				// else it is a failed request (non 200 response code)
+				let statusRules = router.getStatusRules();
+				if(statusRules[response.statusCode]) {
+					// failed requests can have a custom HTML template 
+					// e.g. custom template for a 404 
+					// if a rule for a custom HTML template exists (for this statusCode), call it 
+					statusRules[response.statusCode]();
+				}
+				else {
+					response.end();
+				}
+			}
 		}
 		else {
-			// request for a file
+			// else this is a request for a file
 			this.file(request.url);
 		}
 	},
@@ -162,10 +165,6 @@ Router.prototype = {
 			const page = pug.compileFile(fullTemplatePath);
 			response.setHeader('Content-Type', 'text/html');
 			response.write(page(templateArgs));
-			console.log(this.getCallback());
-			if(typeof(this.getCallback())==='function'){
-				this.getCallback()();
-			};
 			response.end();
 		}
 		else {
@@ -207,19 +206,12 @@ Router.prototype = {
 						});
 						response.write(data);
 					}
-					if(typeof(this.getCallback())==='function'){
-						this.getCallback()();
-					};
 					response.end();
 				}
 			);
 		}
 		else{
 			response.statusCode = 415;
-			if(typeof(this.getCallback())==='function'){
-				var callback = this.getCallback();
-				callback();
-			};
 			response.end();
 		}
 	},
@@ -227,8 +219,8 @@ Router.prototype = {
 		this.setStatusRule(statusCode, onMatch);
 	}
 };
-
 function analyseRequest(request, rules){
+	// This function has a look at the request and returns useful info about it:
 	let results = {
 		response: {
 			statusCode: 200,
