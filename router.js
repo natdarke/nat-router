@@ -128,7 +128,7 @@ Router.prototype = {
 			}
 			else {
 				// else it is a failed request (non 200 response code)
-				let statusRules = router.getStatusRules();
+				let statusRules = this.getStatusRules();
 				if(statusRules[response.statusCode]) {
 					// failed requests can have a custom HTML template 
 					// e.g. custom template for a 404 
