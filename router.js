@@ -233,7 +233,7 @@ function analyseRequest(request, rules){
 	};
 	if(!(request.method==='POST' || request.method==='GET')){
 		results.response.statusCode = 400;
-		results.response.statusCodeType = 'Method';
+		results.response.statusCodeType = 'Method: Unsupported';
 	}
 	else if(/[^A-Z|a-z|0-9|-|.|_|~|:|\/|\?|#|\[|\]|@|!|$|&|'|\(|\)|\*|\+|,|;|=|`]/.test(request.url)){
 		// url has invalid characters
@@ -254,7 +254,7 @@ function analyseRequest(request, rules){
 			}
 			else {
 				results.response.statusCode = 415;
-				results.response.statusCodeType = 'Content-Type: Unsupported ';
+				results.response.statusCodeType = 'Content-Type: Unsupported';
 			}
 		}
 		else {
