@@ -24,18 +24,22 @@ router.setRootDir(__dirname);
 router.rule(
   'GET', 
   '/a/:arg1/:arg2', 
-  () => {
+  (args) => {
+    let templateData = myController(args); // pass the args to your own controller
     router.template( 
-      '/index.pug'
+      '/index.pug',
+      templateData
     );
   }
 );
 router.rule(
   'POST', 
   '/a/:arg1/:arg2',
-  () => {
+  (args, data) => {
+    let templateData = myController(args, data);  // pass the args and POST data to your own controller
     router.template( 
-      '/index.pug'
+      '/index.pug',
+      templateData
     );
   }
 );
@@ -60,7 +64,7 @@ router.rule(
       if(statusCodeType==='Method'){
         message = `${router.getRequest().method} requests are not supported. Only GET and POST methods are currently allowed.`
       }
-      else if(statusCodeType==='URL'){
+      else if(statusCodeType==='URL: Illegal Characters'){
         message = 'The URL of your request contained illegal characters.'
       }
       router.template(
@@ -77,12 +81,12 @@ router.rule(
     () => {
       let statusCodeType = router.getStatusCodeType();
       let message = '';
-      if(statusCodeType==='Unsupported Content Type'){
+      if(statusCodeType==='Content-Type: Unsupported '){
         message =
           `Your POST request has an unsupported Content-Type in its header. 
           Only 'application/x-www-form-urlencoded' and 'application/json' are supported.`;
       }
-      else if(statusCodeType==='Missing Content Type'){
+      else if(statusCodeType==='Content-Type: Missing '){
         message = 
           `Your POST request has a missing Content-Type in its header. 
           Content-Type must be 'application/x-www-form-urlencoded' or 'application/json'.`;
@@ -108,7 +112,7 @@ router.rule(
     );
   }
 );
-// End applications with front-end routing (single page js apps)
+//End applications with front-end routing (single page js apps)
 server.on(
   'request',
   (request, response) => {
@@ -192,8 +196,8 @@ router.rule(
 router.rule(
   ()=>{
     router
-      .when(router.test('statusCode','404')
-      .then(router.respond('render','/404.pug');
+      .when(router.test('statusCode','404'))
+      .then(router.respond('render','/404.pug'));
   }
 );
 
