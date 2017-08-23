@@ -16,6 +16,7 @@ function Router(){
 	let response = {};
 	let callback = null;
 	let args = {};
+	let bodyData = {};
 	let statusRules = [];
 	let rootDir = '';
 	let analysedRequest = {};
@@ -43,14 +44,17 @@ function Router(){
 	this.getCallback = function(){
 		return callback;
 	};
-	this.setArgs = function(a){
-		args = a;
+	this.setArgs = function(o){
+		args = o;
 	};
 	this.getArgs = function(){
 		return args;
 	};
-	this.modArgs = function(key, value){
-		args[key] = value;
+	this.setBodyData = function(o){
+		bodyData = o;
+	};
+	this.getBodyData = function(){
+		return bodyData;
 	};
 	this.setStatusRule = function(n, fn){
 		statusRules[n] = fn;
@@ -103,8 +107,8 @@ Router.prototype = {
 					let chunks = [];
 					request.on('data', chunk => chunks.push(chunk));
 					request.on('end', () => {
+						let bodyData = {};
 						if(chunks.length > 0) {	
-							let bodyData = {};
 							const bodyDataString = Buffer.concat(chunks).toString();
 							if(analysedRequest.body.type === 'urlencoded') {
 								bodyData = qs.parse(bodyDataString);
@@ -112,10 +116,10 @@ Router.prototype = {
 							else if(analysedRequest.body.type === 'json') {
 								bodyData = JSON.parse(bodyDataString);
 							}
-							this.modArgs('data', bodyData);
 						}
+						this.setBodyData(bodyData);
 						// call the function declared in the router rule 
-						analysedRequest.matchedRule.onMatch(this.getArgs());
+						analysedRequest.matchedRule.onMatch(this.getArgs(), bodyData);
 					});
 				}
 				else if(analysedRequest.matchedRule.method === 'GET'){
