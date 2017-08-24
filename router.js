@@ -91,7 +91,6 @@ Router.prototype = {
 			const analysedRequest = analyseRequest(request, this.getRules());
 			this.setAnalysedRequest(analysedRequest);
 			response.statusCode = analysedRequest.response.statusCode;
-			console.log(analysedRequest);
 			if(analysedRequest.response.statusCode===200){
 				// if the request is successful i.e. is valid and a matching rule was found
 				const analysedRequest = this.getAnalysedRequest();
