@@ -91,6 +91,7 @@ Router.prototype = {
 			const analysedRequest = analyseRequest(request, this.getRules());
 			this.setAnalysedRequest(analysedRequest);
 			response.statusCode = analysedRequest.response.statusCode;
+			console.log(analysedRequest);
 			if(analysedRequest.response.statusCode===200){
 				// if the request is successful i.e. is valid and a matching rule was found
 				const analysedRequest = this.getAnalysedRequest();
@@ -301,21 +302,24 @@ function parsePathPattern(urlPath, pattern){
 		match : true,
 		args : {}
 	};
-	urlPath = urlPath.replace(/\/$/, ""); // remove trailing slash
-	const patternArray = pattern.split('/');
-	const urlPathArray = urlPath.split('/');
-	if(patternArray.length !== urlPathArray.length){
-		parsed.match = false;
-		return parsed;
-	}
-	for(let i=1; i<patternArray.length; i++){
-		if(patternArray[i].charAt(0) === ':'){
-			parsed.args[patternArray[i].substring(1)] = urlPathArray[i];
+	if(urlPath !== pattern){ 
+		// if they are the same then there are no arguments - no need to work them out
+		urlPath = urlPath.replace(/\/$/, ""); // remove trailing slash
+		const patternArray = pattern.split('/');
+		const urlPathArray = urlPath.split('/');
+		if(patternArray.length !== urlPathArray.length){
+			parsed.match = false;
+			return parsed;
 		}
-		else{
-			if(patternArray[i] !== urlPathArray[i]){
-				parsed.match = false;
-				break;
+		for(let i=1; i<patternArray.length; i++){
+			if(patternArray[i].charAt(0) === ':'){
+				parsed.args[patternArray[i].substring(1)] = urlPathArray[i];
+			}
+			else{
+				if(patternArray[i] !== urlPathArray[i]){
+					parsed.match = false;
+					break;
+				}
 			}
 		}
 	}
