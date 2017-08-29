@@ -1,6 +1,6 @@
 {
   "name": "nat-router",
-  "version": "0.0.12",
+  "version": "0.1.0",
   "description": "A light-weight, unopinionated router for Node",
   "homepage": "https://github.com/natdarke/way-finder",
   "repository": {
