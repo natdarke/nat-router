@@ -1,5 +1,5 @@
 {
-  "name": "nat-router",
+  "name": "way-finder",
   "version": "0.1.0",
   "description": "A light-weight, unopinionated router for Node",
   "homepage": "https://github.com/natdarke/way-finder",
