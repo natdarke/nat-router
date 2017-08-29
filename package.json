@@ -1,13 +1,13 @@
 {
   "name": "nat-router",
   "version": "0.0.12",
-  "description": "Basic Router",
-  "homepage": "https://github.com/natdarke/nat-router",
+  "description": "A light-weight, unopinionated router for Node",
+  "homepage": "https://github.com/natdarke/way-finder",
   "repository": {
     "type": "git",
-    "url": "https://github.com/natdarke/nat-router.git"
+    "url": "https://github.com/natdarke/way-finder.git"
   },
-  "main": "router.js",
+  "main": "way-finder.js",
   "scripts": {
     "test": "jest"
   },

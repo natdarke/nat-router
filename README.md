@@ -1,6 +1,6 @@
 ## Synopsis
 
-A simple, lightweight node server and router that can deal with requests for:
+A light-weight, unopinionated router for Node that can deal with requests for:
 
 * Files
 * GET
@@ -17,7 +17,7 @@ Supports custom html pages for failed request such as 400, 404, 415, and can eve
 "use strict";
 const http = require('http');
 const server = http.createServer();
-const router = require('nat-router');
+const router = require('way-finder');
 router.setRootDir(__dirname);
 
 // Start Applications with back-end routing
