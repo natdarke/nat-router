@@ -81,7 +81,7 @@ router.rule(
     () => {
       let statusCodeType = router.getStatusCodeType();
       let message = '';
-      if(statusCodeType==='Content-Type: Unsupported '){
+      if(statusCodeType==='Content-Type: Unsupported'){
         message =
           `Your POST request has an unsupported Content-Type in its header. 
           Only 'application/x-www-form-urlencoded' and 'application/json' are supported.`;
@@ -145,32 +145,42 @@ const router = require('nat-router');
 * Sets the root directory as the currect directory
 
 ### router.rule(METHOD, PATTERN, CALLBACK)
-* Adds a rule. All rules are checked when router.resolve is called. If the METHOD and PATTERN are matched then the CALLBACK function is called, with the patterns arguments (:arg1) passed to the any templates rendered inside the callback using router.template 
-* For POST requests, an object called data will also be passed to any templates rendered inside the callback using router.template, representing either
-   - The URL encoded form data submitted in the body of the request (if content-type is 'application/x-www-form-urlencoded')  
-   - The JSON data (parsed) sent in the body of the request (if MIME type is 'application/json')
+* Adds a rule. All rules are checked when router.resolve is called. If the METHOD and PATTERN are matched then the CALLBACK function is called. 
+* If the METHOD is 'GET' the CALLBACK accepts 1 argument.
+  * This argument will be an object with keys and values determined by the pattern and the url
+  * e.g. if the pattern is /a/:b/:c and the url of the rquest is a/red/blue, the object will be { b: 'red', c: 'blue'}
+* If the method is 'POST' the CALLBACK accepts 2 arguments
+  * The first will be an object the same as for the 'GET' METHOD (see above)  
+  * The second will be an object representing the POST data in the body of the request, and can be either:
+    * URL encoded (if content-type is 'application/x-www-form-urlencoded')  
+    * JSON data (parsed) (if MIME type is 'application/json')
 
 ### router.status(STATUS-CODE, CALLBACK)
 * Create custom HTML pages, or templates for failed requests.
-* Similar to router.rule, it allows you to use router.template or router.file for specific statusCodes like 400, 404 and 415.
-* If you use router.template inside the CALLBACK, you can optionally add an object which is passed to the template, thus allowing you to have one template for all failed requests, with varying content
+* This works in the same way as router.rule, except that it works with unsuccessful requests i.e. when the response has a status code like 400, 404 and 415. This allows you to have one template for all failed requests, with varying content
 * In addition, router.getStatusCodeType() returns a more specific reason for the failed request, allowing you to give better information in your HTML page. At the moment, router.getStatusCodeType() will can return 'Content-Type: Unsupported' or 'Content-Type: Missing' for a 415:, 'URL: Illegal Characters' for a 400 . See examples for use.
 
 
-### router.template(TEMPLATE-PATH [, TEMPLATE-DATA])
-* Used inside router.template. TEMPLATE-PATH is the file path of Pug template to be used. Optional TEMPLATE-DATA is data that will be passed to the template. It replaces any automatically generated data from PATTERN in router.rule as well as any POST body data
+### router.template(TEMPLATE-PATH, TEMPLATE-DATA)
+* Used inside the CALLBACK of router.rule(METHOD, PATTERN, CALLBACK)
+* TEMPLATE-PATH is the file path of Pug template to be used. 
+* TEMPLATE-DATA is data that will be passed to the template. TEMPLATE-DATA would normally be data determined by the arguments passed to the CALLBACK of router.rule(METHOD, PATTERN, CALLBACK)
 
 ### router.file(FILE-PATH)
-* Used inside router.template. FILE-PATH is the file path of a file, usually an html file to be used with a single page web application
+* Used inside the CALLBACK of router.rule(METHOD, PATTERN, CALLBACK)
+* FILE-PATH is the file path of a file, usually an html file to be used with a single page web application
 
 ### router.resolve(REQUEST, RESPONSE)
 * Required
-* Called when any request is made, passing the standard node http REQUEST and RESPONSE objects (aka http.incomingMessage and http.serverResponse)
-* If the request has a file extension of a known MIME type, it will look for a file of that name, else it will attempt to resolve the request using rules added using router.on
+* This is called every time a request is made
+* REQUEST is a Node http.incomingMessage object
+* RESPONSE is a Node http.serverResponse object
+* If the request has a file extension of a known MIME type, it will look for a file of that name, else it will attempt to resolve the request using rules added using router.rule(METHOD, PATTERN, CALLBACK)
 
 ## Tests
 
-There are no tests for this package yet
+* npm test
+
 
 ## Future Version
 * As if often the case, it takes writing a program to realise how it should have been done. The next version of this router will have a different API (see examples below) and will be re-staructured accordingly
@@ -178,12 +188,12 @@ There are no tests for this package yet
 
 ```JavaScript
 router.rule(
-  ()=>{
+  (args)=>{
     router
       .when(router.test('method','GET'))
       .and(router.test('match','/a/:b/:c'))
       .or(router.test('match','/aa/:b/:c'))
-      .then(router.respond('render','/index.pug');
+      .then(router.respond('render','/index.pug', args);
   }
 );
 router.rule(
