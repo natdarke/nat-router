@@ -8,7 +8,7 @@ A simple, lightweight node server and router that can deal with requests for:
 
 Useful if you want a basic router without installing a full framework. Works with Pug as the rendering engine. Can work with Single page web applications.
 
-Supports custom html pages for failed request such as 400, 404, 415, and can even distinguish between differnt types of failures.
+Supports custom html pages for failed request such as 400, 404, 415, and can even distinguish between different types of failures.
     
 
 ## Code Example
