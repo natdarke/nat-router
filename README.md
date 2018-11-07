@@ -181,6 +181,10 @@ const router = require('nat-router');
 
 * npm test
 
+## To Do
+* Check POST data is valid
+* Allow query string on static files
+
 
 ## Future Version
 * As if often the case, it takes writing a program to realise how it should have been done. The next version of this router will have a different API (see examples below) and will be re-staructured accordingly
